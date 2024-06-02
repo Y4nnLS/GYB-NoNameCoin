@@ -5,11 +5,29 @@ import random
 VALIDATOR_SERVICE_URL = "http://127.0.0.1:5002/validador"
 
 class SeletorController:
+    """
+    Classe que gerencia os validadores e processa as transações, selecionando validadores para obter consenso.
+
+    Attributes:
+        validators (list): Lista de validadores registrados.
+    """
+
     def __init__(self):
+        """
+        Inicializa uma nova instância de SeletorController.
+        """
         self.validators = []
 
     def register_validator(self, data):
-        # Registrar um novo validador
+        """
+        Registra um novo validador.
+
+        Args:
+            data (dict): Dicionário contendo as informações do validador (name e stake).
+
+        Returns:
+            Response: Resposta JSON com os dados do validador registrado e o status HTTP 201.
+        """
         validator = {
             'id': len(self.validators) + 1,
             'name': data['name'],
@@ -20,6 +38,15 @@ class SeletorController:
         return jsonify(validator), 201
 
     def handle_transaction(self, data):
+        """
+        Lida com uma transação selecionando validadores e obtendo consenso.
+
+        Args:
+            data (dict): Dicionário contendo as informações da transação (transaction_id e amount).
+
+        Returns:
+            Response: Resposta JSON com o status do consenso e os resultados das validações, ou erro caso não haja validadores suficientes.
+        """
         # Selecionar validadores para a transação
         if len(self.validators) < 3:
             return jsonify({'error': 'Not enough validators registered'}), 400
