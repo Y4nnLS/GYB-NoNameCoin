@@ -1,5 +1,3 @@
-Entendi! Aqui está o `README.md` em português ajustado para o uso do `virtualenv` com Python:
-
 ```markdown
 # NoNameCoin
 
