@@ -4,17 +4,17 @@ from validador_controller import ValidadorController
 app = Flask(__name__)
 validador_controller = ValidadorController()
 
-@app.route('/validador/register', methods=['POST'])
-def register_validator():
-    """
-    Rota para registrar um novo validador.
+# @app.route('/validador/register', methods=['POST'])
+# def register_validator():
+#     """
+#     Rota para registrar um novo validador.
 
-    Recebe uma solicitação POST com dados JSON contendo 'name' e 'stake' do validador.
+#     Recebe uma solicitação POST com dados JSON contendo 'name' e 'stake' do validador.
 
-    Returns:
-        Response: Resposta JSON com os dados do validador registrado e o status HTTP 201.
-    """
-    return validador_controller.register_validator(request.json)
+#     Returns:
+#         Response: Resposta JSON com os dados do validador registrado e o status HTTP 201.
+#     """
+#     return validador_controller.register_validator(request.json)
 
 @app.route('/validador', methods=['POST'])
 def validate_transaction():

@@ -26,6 +26,16 @@ def handle_transaction():
     Returns:
         Response: Resposta JSON com os dados da transação processada e o status HTTP 200.
     """
+    """
+    {
+        "transaction_id" : ,
+        "sender" : ,
+        "amount" : 50 ,
+        "transaction_time" : ,
+        "validator_id" : ,
+        "validator_key" : 
+    }
+    """
     return seletor_controller.handle_transaction(request.json)
 
 if __name__ == '__main__':

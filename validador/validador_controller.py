@@ -21,25 +21,25 @@ class ValidadorController:
         self.balances = {}  # Armazenar saldos dos remetentes
         self.transactions = {}  # Armazenar histórico de transações
 
-    def register_validator(self, data):
-        """
-        Registra um novo validador.
+    # def register_validator(self, data):
+    #     """
+    #     Registra um novo validador.
 
-        Args:
-            data (dict): Dicionário contendo as informações do validador (name e stake).
+    #     Args:
+    #         data (dict): Dicionário contendo as informações do validador (name e stake).
 
-        Returns:
-            Response: Resposta JSON com os dados do validador registrado e o status HTTP 201.
-        """
-        validator = {
-            'id': len(self.validators) + 1,
-            'name': data['name'],
-            'stake': data['stake'],
-            'flag': 0,
-            'unique_key': f"key_{len(self.validators) + 1}"  # Chave única
-        }
-        self.validators.append(validator)
-        return jsonify(validator), 201
+    #     Returns:
+    #         Response: Resposta JSON com os dados do validador registrado e o status HTTP 201.
+    #     """
+    #     validator = {
+    #         'id': len(self.validators) + 1,
+    #         'name': data['name'],
+    #         'stake': data['stake'],
+    #         'flag': 0,
+    #         'unique_key': f"key_{len(self.validators) + 1}"  # Chave única
+    #     }
+    #     self.validators.append(validator)
+    #     return jsonify(validator), 201
 
     def validate_transaction(self, data):
         """

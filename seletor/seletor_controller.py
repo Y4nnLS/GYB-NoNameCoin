@@ -51,7 +51,7 @@ class SeletorController:
         if len(self.validators) < 3:
             return jsonify({'error': 'Not enough validators registered'}), 400
         
-        selected_validators = random.sample(self.validators, 3)
+        selected_validators = random.sample(self.validators, 3) # proof of stake
         results = []
 
         for validator in selected_validators:
