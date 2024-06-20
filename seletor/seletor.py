@@ -8,7 +8,6 @@ from flask_migrate import Migrate
 from dataclasses import dataclass
 import os
 
-
 app = Flask(__name__)
 
 # Caminho para o banco de dados
@@ -55,7 +54,6 @@ transaction_log = []
 def index():
     return jsonify(['API sem interface do banco!'])
 
-
 @app.route('/seletor/register/<string:name>/<int:stake>', methods = ['POST'])
 def register_validator(name, stake):
     print("entrou1")
@@ -77,7 +75,7 @@ def register_validator(name, stake):
         print("entrou else")
 
         return jsonify(['Method Not Allowed'])
-    
+
     # return #jsonify({"status": 1, "unique_key": unique_key}), 201
 
 def register_validator_key(validator_id, unique_key):
@@ -94,6 +92,7 @@ def register_validator_key(validator_id, unique_key):
 def select_validators():
     data = request.json
     transaction_id = data['transaction_id']
+    transaction_amount = data['transaction_amount']
     
     if len(validators) < 3:
         pending_transactions.append((transaction_id, datetime.datetime.now()))
@@ -121,7 +120,7 @@ def select_validators():
         "timestamp": datetime.datetime.now().isoformat()
     })
 
-    update_validators_after_selection(selected_validators)
+    update_validators_after_selection(selected_validators, transaction_amount)
     
     return jsonify({"status": 1, "selected_validators": selected_validators})
 
@@ -147,9 +146,15 @@ def select_based_on_stake(validators):
 
     return selected_validators
 
-def update_validators_after_selection(selected_validators):
+def update_validators_after_selection(selected_validators, transaction_amount):
+    total_reward = transaction_amount * 0.015
+    locked_reward = transaction_amount * 0.005
+    distributed_reward = (total_reward - locked_reward) / len(selected_validators)
+
     for validator in selected_validators:
         validators[validator]['coherent_transactions'] += 1
+        validators[validator]['stake'] += distributed_reward
+
         if validators[validator]['coherent_transactions'] >= 10000:
             validators[validator]['coherent_transactions'] -= 10000
             if validators[validator]['flags'] > 0:
@@ -167,6 +172,11 @@ def update_validators_after_selection(selected_validators):
             if validators[validator]['hold_count'] == 0:
                 validators[validator]['in_hold'] = False
                 validators[validator]['consecutive_selections'] = 0
+
+    # Allocate the locked reward to the first selected validator (could be improved to a more complex logic)
+    if selected_validators:
+        first_validator = selected_validators[0]
+        validators[first_validator]['stake'] += locked_reward
 
 @app.route('/seletor/consensus', methods=['POST'])
 def get_consensus():
@@ -226,5 +236,3 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True, port=5001)
-    
-    

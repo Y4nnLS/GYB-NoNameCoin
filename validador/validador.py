@@ -8,8 +8,8 @@ unique_keys = {}
 
 # Dados do banco simulados para transações e contas
 accounts = {
-    "user1": {"balance": 1000, "last_transaction_time": None, "transaction_count": 0},
-    "user2": {"balance": 500, "last_transaction_time": None, "transaction_count": 0},
+    "user1": {"balance": 1000, "last_transaction_time": None, "transaction_count": 0, "last_block_time": None, "block_duration": 60},
+    "user2": {"balance": 500, "last_transaction_time": None, "transaction_count": 0, "last_block_time": None, "block_duration": 60},
 }
 
 transactions = [
@@ -42,6 +42,7 @@ def validador():
         return jsonify({"status": 2, "message": "Transação não encontrada"}), 400
 
     sender = transaction['sender']
+    receiver = transaction['receiver']
     amount = transaction['amount']
     fee = transaction['fee']
     timestamp = datetime.datetime.fromisoformat(transaction['timestamp'])
@@ -55,18 +56,26 @@ def validador():
     if timestamp > current_time or (accounts[sender]['last_transaction_time'] and timestamp <= accounts[sender]['last_transaction_time']):
         return jsonify({"status": 2, "message": "Horário da transação inválido"}), 400
 
-    # Verificar o limite de transações por minuto
-    if accounts[sender]['last_transaction_time'] and (current_time - accounts[sender]['last_transaction_time']).seconds < 60:
-        accounts[sender]['transaction_count'] += 1
-        if accounts[sender]['transaction_count'] > 100:
-            return jsonify({"status": 2, "message": "Limite de transações por minuto excedido"}), 400
-    else:
-        accounts[sender]['transaction_count'] = 1
+    # Verificar o limite de transações por minuto e estado de bloqueio
+    if accounts[sender]['last_block_time'] and (current_time - accounts[sender]['last_block_time']).seconds < accounts[sender]['block_duration']:
+        return jsonify({"status": 2, "message": "Remetente bloqueado devido a transações excessivas"}), 400
 
+    # Contar transações no último minuto
+    transactions_last_minute = [t for t in transactions if t['sender'] == sender and (current_time - datetime.datetime.fromisoformat(t['timestamp'])).seconds < 60]
+
+    if len(transactions_last_minute) > 100:
+        accounts[sender]['last_block_time'] = current_time
+        accounts[sender]['block_duration'] *= 2  # Dobre o tempo de bloqueio se o problema persistir
+        return jsonify({"status": 2, "message": "Limite de transações por minuto excedido, remetente bloqueado"}), 400
+
+    # Atualizar saldo da conta e tempo da última transação
     accounts[sender]['balance'] -= amount + fee
-    accounts[sender]['last_transaction_time'] = current_time
+    accounts[sender]['last_transaction_time'] = timestamp
 
-    accounts[transaction['receiver']]['balance'] += amount
+    accounts[receiver]['balance'] += amount
+
+    transaction['status'] = 1  # Transação concluída com sucesso
+    transaction['unique_key'] = unique_key
 
     return jsonify({"status": 1, "message": "Transação validada com sucesso"}), 200
 
