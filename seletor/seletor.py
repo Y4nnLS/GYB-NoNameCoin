@@ -56,37 +56,22 @@ def index():
 
 @app.route('/seletor/register/<string:name>/<int:stake>', methods = ['POST'])
 def register_validator(name, stake):
-    print("entrou1")
+    
     existing_validator = Validador.query.filter_by(name=name).first()
     if existing_validator:
         return jsonify({"status": 2, "message": "Validador já registrado"}), 400
-    print("entrou2")
+    
     if stake < 50:
         return jsonify({"status": 2, "message": "Saldo mínimo insuficiente"}), 400
-    print("entrou3")
+    
     if request.method=='POST' and stake != '' and name != '':
-        print("entrou else")
-
         objeto = Validador(name = name, stake = stake, flags = 0, in_hold = False, hold_count = 0, last_selected = 0, coherent_transactions = 0, consecutive_selections = 0, expulsions = 0, total_selections = 0)
         db.session.add(objeto)
         db.session.commit()
         return jsonify(objeto), 201
     else:
-        print("entrou else")
 
         return jsonify(['Method Not Allowed'])
-
-    # return #jsonify({"status": 1, "unique_key": unique_key}), 201
-
-def register_validator_key(validator_id, unique_key):
-    url = 'http://127.0.0.1:5002/validador/register_key'
-    payload = {
-        "validator_id": validator_id,
-        "unique_key": unique_key
-    }
-    headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, json=payload, headers=headers)
-    return response.json()
 
 @app.route('/seletor/select', methods=['POST'])
 def select_validators():
