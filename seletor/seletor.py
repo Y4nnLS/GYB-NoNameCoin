@@ -3,42 +3,82 @@ import random
 import datetime
 import requests
 from collections import defaultdict
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from dataclasses import dataclass
+import os
+
 
 app = Flask(__name__)
+
+# Caminho para o banco de dados
+db_path = os.path.join(os.getcwd(), 'seletor/banco')
+db_file = 'seletor.db'
+if not os.path.exists(db_path):
+    os.makedirs(db_path)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(db_path, db_file)}'
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+@dataclass
+class Validador(db.Model):
+    id: int # unique_key
+    name: str
+    stake: float
+    flags: int
+    in_hold: bool
+    hold_count: int
+    last_selected: int
+    coherent_transactions: int
+    consecutive_selections: int
+    expulsions: int
+    total_selections: int
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    stake = db.Column(db.Float(20), unique=False, nullable=False)
+    flags = db.Column(db.Integer, unique=False, nullable=False)
+    in_hold = db.Column(db.Boolean(20), unique=False, nullable=False)
+    hold_count = db.Column(db.Integer, unique=False, nullable=False)
+    last_selected = db.Column(db.Integer, unique=False, nullable=False)
+    coherent_transactions = db.Column(db.Integer, unique=False, nullable=False)
+    consecutive_selections = db.Column(db.Integer, unique=False, nullable=False)
+    expulsions = db.Column(db.Integer, unique=False, nullable=False)
+    total_selections = db.Column(db.Integer, unique=False, nullable=False)
 
 validators = {}
 pending_transactions = []
 transaction_log = []
 
-@app.route('/seletor/register', methods=['POST'])
-def register_validator():
-    data = request.json
-    validator_id = data['validator_id']
-    stake = data['stake']
-    
-    if validator_id in validators:
+@app.route("/")
+def index():
+    return jsonify(['API sem interface do banco!'])
+
+
+@app.route('/seletor/register/<string:name>/<int:stake>', methods = ['POST'])
+def register_validator(name, stake):
+    print("entrou1")
+    existing_validator = Validador.query.filter_by(name=name).first()
+    if existing_validator:
         return jsonify({"status": 2, "message": "Validador já registrado"}), 400
-    
+    print("entrou2")
     if stake < 50:
         return jsonify({"status": 2, "message": "Saldo mínimo insuficiente"}), 400
-    
-    unique_key = f"key{len(validators) + 1}"
-    validators[validator_id] = {
-        "stake": stake,
-        "unique_key": unique_key,
-        "flags": 0,
-        "in_hold": False,
-        "hold_count": 0,
-        "last_selected": None,
-        "coherent_transactions": 0,
-        "consecutive_selections": 0,
-        "expulsions": 0,
-        "total_selections": 0
-    }
+    print("entrou3")
+    if request.method=='POST' and stake != '' and name != '':
+        print("entrou else")
 
-    register_validator_key(validator_id, unique_key)
+        objeto = Validador(name = name, stake = stake, flags = 0, in_hold = False, hold_count = 0, last_selected = 0, coherent_transactions = 0, consecutive_selections = 0, expulsions = 0, total_selections = 0)
+        db.session.add(objeto)
+        db.session.commit()
+        return jsonify(objeto), 201
+    else:
+        print("entrou else")
+
+        return jsonify(['Method Not Allowed'])
     
-    return jsonify({"status": 1, "unique_key": unique_key}), 201
+    # return #jsonify({"status": 1, "unique_key": unique_key}), 201
 
 def register_validator_key(validator_id, unique_key):
     url = 'http://127.0.0.1:5002/validador/register_key'
@@ -183,4 +223,8 @@ def return_validator():
     return jsonify({"status": 1, "message": "Validador retornou à rede"}), 201
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, port=5001)
+    
+    

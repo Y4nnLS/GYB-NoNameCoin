@@ -57,6 +57,7 @@ with app.app_context():
 def index():
     return jsonify(['API sem interface do banco!'])
 
+# cliente
 @app.route('/cliente', methods = ['GET'])
 def ListarCliente():
     if(request.method == 'GET'):
@@ -113,6 +114,7 @@ def ApagarCliente(id):
     else:
         return jsonify(['Method Not Allowed'])
 
+# seletor
 @app.route('/seletor', methods = ['GET'])
 def ListarSeletor():
     if(request.method == 'GET'):
@@ -172,18 +174,19 @@ def ApagarSeletor(id):
     else:
         return jsonify(['Method Not Allowed'])
 
+# hora
 @app.route('/hora', methods = ['GET'])
 def horario():
     if(request.method == 'GET'):
         objeto = datetime.now()
         return jsonify(objeto)
-		
+
+# transações		
 @app.route('/transacoes', methods = ['GET'])
 def ListarTransacoes():
     if(request.method == 'GET'):
         transacoes = Transacao.query.all()
         return jsonify(transacoes)
-    
     
 @app.route('/transacoes/<int:rem>/<int:reb>/<int:valor>', methods = ['POST'])
 def CriaTransacao(rem, reb, valor):
