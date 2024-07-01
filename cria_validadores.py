@@ -1,17 +1,14 @@
 import requests
 
-response = requests.get('http://localhost:5001/')
-print(response.text)
-
 # =============================== REGISTRO DE VALIDADORES =============================== 
-response = requests.post('http://localhost:5001/seletor/register/sla/10')
+response = requests.post('http://localhost:5001/seletor/register/aaaaaaaaaa/10')
 print(response.text)
-response = requests.post('http://localhost:5001/seletor/register/pinto/69')
+response = requests.post('http://localhost:5001/seletor/register/b/69')
 print(response.text)
-response = requests.post('http://localhost:5001/seletor/register/cu/666')
+response = requests.post('http://localhost:5001/seletor/register/c/666')
 print(response.text)
-response = requests.post('http://localhost:5001/seletor/register/bosta/6969')
+response = requests.post('http://localhost:5001/seletor/register/d/6969')
 print(response.text)
-response = requests.post('http://localhost:5001/seletor/register/mijo/9669')
+response = requests.post('http://localhost:5001/seletor/register/e/9669')
 print(response.text)
 

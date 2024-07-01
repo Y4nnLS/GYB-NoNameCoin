@@ -81,10 +81,11 @@ def validador():
 
 @app.route('/validador/register_key', methods=['POST'])
 def register_key():
+    print("aaaaaaaaaaa")
     data = request.json
     validator_id = data['validator_id']
     unique_key = data['unique_key']
-    unique_keys[validator_id] = unique_key
+    unique_keys[validator_id] = unique_key  # Armazenar a chave única associada ao ID do validador
     return jsonify({"status": 1, "message": "Chave registrada com sucesso"}), 200
 
 @app.route('/validador/register_transaction', methods=['POST'])

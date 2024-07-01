@@ -190,17 +190,43 @@ def ListarTransacoes():
     
 @app.route('/transacoes/<int:rem>/<int:reb>/<int:valor>', methods = ['POST'])
 def CriaTransacao(rem, reb, valor):
+    print(f"Recebido pedido de criação de transação: remetente={rem}, recebedor={reb}, valor={valor}")
+
     if request.method=='POST':
         objeto = Transacao(remetente=rem, recebedor=reb,valor=valor,status=0,horario=datetime.now())
         db.session.add(objeto)
         db.session.commit()
+
+        print(f"Transação criada e salva no banco de dados: {objeto}")
+
+        # Selecionar validadores
         seletores = Seletor.query.all()
-        # for seletor in seletores:
-        #     #Implementar a rota /localhost/<ipSeletor>/transacoes
-        #     url = seletor.ip + '/transacoes/'
-        #     requests.post(url, data=jsonify(objeto))
+        print(f"Seletores encontrados: {seletores}")
+
+        for seletor in seletores:
+            try:
+                url = f'http://127.0.0.1:5001/seletor/select'
+                data = {
+                    'transaction_id': objeto.id,
+                    'transaction_amount': valor
+                }
+                print(f"Enviando requisição para o seletor: {url} com dados: {data}")
+                response = requests.post(url, json=data)
+                
+                print(f"Resposta do seletor: {response.status_code}, {response.text}")
+                
+                if response.status_code == 200:
+                    selected_validators = response.json().get("selected_validators")
+                    print(f"Validadores selecionados: {selected_validators}")
+                    # Enviar transação para validadores (omitir esta parte ou completar conforme necessidade)
+                else:
+                    print(f"Erro ao comunicar com o seletor {seletor.ip}: {response.status_code}")
+            except requests.exceptions.RequestException as e:
+                print(f"Falha ao conectar ao seletor {seletor.ip}: {e}")
+
         return jsonify(objeto)
     else:
+        print("Método não permitido")
         return jsonify(['Method Not Allowed'])
 
 @app.route('/transacoes/<int:id>', methods = ['GET'])
