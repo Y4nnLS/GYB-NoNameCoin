@@ -23,7 +23,6 @@ class Cliente(db.Model):
     nome = db.Column(db.String(20), unique=False, nullable=False)
     senha = db.Column(db.String(20), unique=False, nullable=False)
     qtdMoeda = db.Column(db.Integer, unique=False, nullable=False)
-
 @dataclass
 class Seletor(db.Model):
     id: int
@@ -49,6 +48,8 @@ class Transacao(db.Model):
     valor = db.Column(db.Integer, unique=False, nullable=False)
     horario = db.Column(db.DateTime, unique=False, nullable=False)
     status = db.Column(db.Integer, unique=False, nullable=False)
+    def __repr__(self):
+        return f'<Transacao {self.id}>'
 
 with app.app_context():
     db.create_all()
@@ -188,12 +189,12 @@ def ListarTransacoes():
         transacoes = Transacao.query.all()
         return jsonify(transacoes)
     
-@app.route('/transacoes/<int:rem>/<int:reb>/<int:valor>', methods = ['POST'])
+@app.route('/transacoes/<int:rem>/<int:reb>/<int:valor>', methods=['POST'])
 def CriaTransacao(rem, reb, valor):
     print(f"Recebido pedido de criação de transação: remetente={rem}, recebedor={reb}, valor={valor}")
 
-    if request.method=='POST':
-        objeto = Transacao(remetente=rem, recebedor=reb,valor=valor,status=0,horario=datetime.now())
+    if request.method == 'POST':
+        objeto = Transacao(remetente=rem, recebedor=reb, valor=valor, status=0, horario=datetime.now())
         db.session.add(objeto)
         db.session.commit()
 
@@ -202,13 +203,22 @@ def CriaTransacao(rem, reb, valor):
         # Selecionar validadores
         seletores = Seletor.query.all()
         print(f"Seletores encontrados: {seletores}")
-
+        sender = requests.get(f'http://localhost:5000/cliente/{rem}')
+        sender_amount = sender.json()
+        sender = requests.get(f'http://localhost:5000/cliente/{reb}')
+        receiver_amount = sender.json()
         for seletor in seletores:
             try:
                 url = f'http://127.0.0.1:5001/seletor/select'
                 data = {
                     'transaction_id': objeto.id,
-                    'transaction_amount': valor
+                    'transaction_amount': valor,
+                    'sender': rem,
+                    'sender_amount': sender_amount['qtdMoeda'],  # Adicionando o saldo do remetente
+                    'receiver': reb,
+                    'receiver_amount': receiver_amount['qtdMoeda'],
+                    'fee': 1,  # Adicione uma lógica para definir a taxa se necessário
+                    'timestamp': objeto.horario.isoformat()
                 }
                 print(f"Enviando requisição para o seletor: {url} com dados: {data}")
                 response = requests.post(url, json=data)
@@ -228,6 +238,7 @@ def CriaTransacao(rem, reb, valor):
     else:
         print("Método não permitido")
         return jsonify(['Method Not Allowed'])
+
 
 @app.route('/transacoes/<int:id>', methods = ['GET'])
 def UmaTransacao(id):

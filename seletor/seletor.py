@@ -1,14 +1,13 @@
+# Outras importações
 from flask import Flask, request, jsonify
 import random
-import datetime
 import requests
-from collections import defaultdict
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from dataclasses import dataclass
 import os
 import secrets
 import string
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from dataclasses import dataclass
 
 app = Flask(__name__)
 
@@ -39,7 +38,7 @@ class Validador(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
-    stake = db.Column(db.Float(20), nullable=False)
+    stake = db.Column(db.Float, nullable=False)
     flags = db.Column(db.Integer, nullable=False, default=0)
     in_hold = db.Column(db.Boolean, nullable=False, default=False)
     hold_count = db.Column(db.Integer, nullable=False, default=0)
@@ -71,7 +70,7 @@ def register_validator(name, stake):
 
     if request.method == 'POST' and name != '':
         # Criar objeto Validador e adicionar ao banco de dados
-        objeto = Validador(name=name, stake=stake)
+        objeto = Validador(name=name, stake=stake, flags=0, in_hold=False, hold_count=0, last_selected=0, coherent_transactions=0, consecutive_selections=0, expulsions=0, total_selections=0, unique_key="")
         db.session.add(objeto)
         db.session.commit()
 
@@ -80,6 +79,7 @@ def register_validator(name, stake):
         objeto.unique_key = unique_key  # Atualiza o campo no objeto
         db.session.commit()
 
+        # Enviar chave única ao servidor de validadores
         response = requests.post(f'http://localhost:5002/validador/register_key', json={"validator_id": objeto.id, "unique_key": unique_key})
 
         # Verificar resposta do validador
@@ -94,19 +94,26 @@ def register_validator(name, stake):
 
 @app.route('/seletor/select', methods=['POST'])
 def select_validators():
-    print("Recebida requisição para seleção de validadores")
     data = request.json
+    print(data)
     transaction_id = data['transaction_id']
-    transaction_amount = data['transaction_amount']
-    print(f"Dados recebidos: {data}")
-
+    transaction_details = {
+        'id': transaction_id,
+        'sender': data['sender'],
+        'sender_amount': data['sender_amount'],
+        'receiver': data['receiver'],
+        'receiver_amount': data['receiver_amount'],
+        'amount': data['transaction_amount'],
+        'fee': data['fee'],
+        'timestamp': data['timestamp']
+    }
+    
     validadores = Validador.query.filter_by(in_hold=False).all()
 
     if len(validadores) < 3:
         return jsonify({"status": 2, "message": "Validadores insuficientes, transação em espera"}), 400
 
     selected_validators = select_based_on_stake(validadores)
-    print(f"Validadores selecionados: {selected_validators}")
 
     # Enviar transação para validadores selecionados
     for validador_id in selected_validators:
@@ -114,21 +121,21 @@ def select_validators():
         try:
             url = f'http://localhost:5002/validador'
             data = {
-                'transaction_id': transaction_id,
+                'transaction': transaction_details,
                 'validator_id': validador_id,
-                'unique_key': validador.unique_key  # Utiliza a chave única do validador
+                'unique_key': validador.unique_key
             }
-            print(f"Enviando requisição para o validador: {url} com dados: {data}")
+            print(data)
             response = requests.post(url, json=data)
-            
-            print(f"Resposta do validador: {response.status_code}, {response.text}")
-            
+            # print("aaaaaaaaaaaaaa: ", response.json())
+
             if response.status_code != 200:
                 print(f"Erro ao comunicar com o validador {validador.name}: {response.status_code}")
         except requests.exceptions.RequestException as e:
             print(f"Falha ao conectar ao validador {validador.name}: {e}")
 
     return jsonify({"status": 1, "selected_validators": selected_validators})
+
 
 def select_based_on_stake(validators):
     total_stake = sum(v.stake for v in validators)
