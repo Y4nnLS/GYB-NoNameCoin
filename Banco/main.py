@@ -168,7 +168,7 @@ def ApagarSeletor(id):
         db.session.commit()
 
         data={
-            "message": "Validador Deletado com Sucesso"
+            "message": "Seletor Deletado com Sucesso"
         }
 
         return jsonify(data)

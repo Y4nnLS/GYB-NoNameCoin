@@ -175,6 +175,19 @@ def select_validators():
     
     return jsonify({"status": 1, "selected_validators": selected_validators, "validation_results": validation_results})
 
+@app.route('/seletor/delete/<int:id>', methods = ['DELETE'])
+def ApagarSeletor(id):
+    if(request.method == 'DELETE'):
+        objeto = db.session.get(Validador, id)
+        db.session.delete(objeto)
+        db.session.commit()
+        data={
+            "message": "Validador Deletado com Sucesso"
+        }
+
+        return jsonify(data)
+    else:
+        return jsonify(['Method Not Allowed'])
 
 def select_based_on_stake(validators):
     total_stake = sum(v.stake for v in validators)
