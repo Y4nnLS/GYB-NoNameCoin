@@ -36,6 +36,8 @@ class Validador(db.Model):
     expulsions: int
     total_selections: int
     unique_key: str  # Alterado para tipo str
+    initial_stake: float
+    expelled_count: int
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
@@ -49,6 +51,8 @@ class Validador(db.Model):
     expulsions = db.Column(db.Integer, nullable=False, default=0)
     total_selections = db.Column(db.Integer, nullable=False, default=0)
     unique_key = db.Column(db.String(16), nullable=False)  # Chave única como string
+    initial_stake = db.Column(db.Float, nullable=False, default=0)
+    expelled_count = db.Column(db.Integer, nullable=False, default=0)
 
 def generate_unique_key():
     alphabet = string.ascii_letters + string.digits
@@ -91,37 +95,37 @@ def index():
 
 @app.route('/seletor/register/<string:name>/<float:stake>', methods=['POST'])
 def register_validator(name, stake):
-    
     existing_validator = Validador.query.filter_by(name=name).first()
-    if existing_validator:
-        return jsonify({"status": 2, "message": "Validador já registrado"}), 400
     
-    if stake < 50.0:
-        return jsonify({"status": 2, "message": "Saldo mínimo insuficiente"}), 400
-
-    if request.method == 'POST' and name != '':
-        # Criar objeto Validador e adicionar ao banco de dados
-        objeto = Validador(name=name, stake=stake, flags=0, in_hold=False, hold_count=0, last_selected=0, coherent_transactions=0, consecutive_selections=0, expulsions=0, total_selections=0, unique_key="")
-        db.session.add(objeto)
+    if existing_validator:
+        required_stake = existing_validator.initial_stake * (2 ** existing_validator.expelled_count)
+        if existing_validator.expelled_count > 0 and stake < required_stake:
+            return jsonify({"status": 2, "message": f"Saldo insuficiente. É necessário pelo menos {required_stake} para retornar à rede."}), 400
+        existing_validator.stake = stake
+        existing_validator.in_hold = False
         db.session.commit()
-
-        # Gerar e enviar chave única para o validador registrado
-        unique_key = generate_unique_key()  # Implemente sua lógica para gerar a chave única
-        objeto.unique_key = unique_key  # Atualiza o campo no objeto
-        db.session.commit()
-
-        # Enviar chave única ao servidor de validadores
-        response = requests.post(f'http://localhost:5002/validador/register_key', json={"validator_id": objeto.id, "unique_key": unique_key})
-
-        # Verificar resposta do validador
-        if response.status_code == 200:
-            # Registro bem-sucedido
-            return jsonify({"status": 1, "message": "Validador registrado com sucesso"}), 201
-        else:
-            # Tratamento de erro
-            return jsonify({"status": 2, "message": "Erro ao registrar validador"}), 400
     else:
-        return jsonify({"status": 2, "message": "Método não permitido ou dados incompletos"}), 400
+        if stake < 50.0:
+            return jsonify({"status": 2, "message": "Saldo mínimo insuficiente"}), 400
+        
+        if request.method == 'POST' and name != '':
+            unique_key = generate_unique_key()
+            new_validator = Validador(
+                name=name, stake=stake, flags=0, in_hold=False, hold_count=0,
+                last_selected=0, coherent_transactions=0, consecutive_selections=0,
+                expulsions=0, total_selections=0, unique_key=unique_key,
+                initial_stake=stake, expelled_count=0
+            )
+            db.session.add(new_validator)
+            db.session.commit()
+
+            response = requests.post(f'http://localhost:5002/validador/register_key', json={"validator_id": new_validator.id, "unique_key": unique_key})
+            if response.status_code == 200:
+                return jsonify({"status": 1, "message": "Validador registrado com sucesso"}), 201
+            else:
+                return jsonify({"status": 2, "message": "Erro ao registrar validador"}), 400
+    return jsonify({"status": 1, "message": "Validador registrado com sucesso."})
+
 
 @app.route('/seletor/select', methods=['POST'])
 def select_validators():
@@ -180,6 +184,24 @@ def select_validators():
     # Verificando se há consenso
     consensus = 'Aprovada' if approved_count > len(validation_results) / 2 else 'Nao Aprovada' if rejected_count > len(validation_results) / 2 else 'Sem consenso'
 
+    for result in validation_results:
+        validador_id = result['validator_id']
+        validador = db.session.get(Validador, validador_id)
+        if (consensus == 'Aprovada' and result['status'] != 1) or (consensus == 'Nao Aprovada' and result['status'] != 2):
+            validador.flags += 1
+            validador.coherent_transactions = 0
+            if validador.flags > 2:
+                validador.stake = 0
+                validador.in_hold = True
+                validador.expelled_count += 1
+            db.session.commit()
+        else:
+            validador.coherent_transactions += 1
+            if validador.coherent_transactions >= 10000:
+                validador.flags = max(0, validador.flags - 1)
+                validador.coherent_transactions = 0
+            db.session.commit()
+
     print(f"Consenso: {consensus}")
 
     if consensus == 'Aprovada':
@@ -192,25 +214,16 @@ def select_validators():
         transaction_amount -= verdin
         taxa_seletor = verdin/3
         taxa_validadores = (verdin-taxa_seletor)/len(validadores)
-        print(1)
         response = requests.post(f'http://localhost:5000/seletor/{data["seletor_id"]}/{data["seletor_nome"]}/{data["seletor_ip"]}/{taxa_seletor:.2f}')
-        print("buceta: ", response.text)
-        print(2)
         for validador in selected_validators:
-            print("pinto: ", validador)
             validador = db.session.get(Validador, validador)
-            print("karalho: ", validador)
             validador.stake += taxa_validadores
             db.session.commit()
-            print("porra: ", validador)
-        print(3)
         try:
             # Atualizar saldo do remetente
             sender_response = requests.post(f'http://localhost:5000/cliente/{sender_id}', params={'amount': -(transaction_amount)})
-            print("fishballcat: ",sender_response.text)
             # Atualizar saldo do destinatário
             receiver_response = requests.post(f'http://localhost:5000/cliente/{receiver_id}', params={'amount': transaction_amount})
-            print("przy corno do krll filha da puta: ",sender_response.text)
 
             if sender_response.status_code == 200 and receiver_response.status_code == 200:
                 return jsonify({"status": 1, "message": "Transacao aprovada e valores atualizados", "selected_validators": selected_validators, "validation_results": validation_results})
@@ -220,6 +233,7 @@ def select_validators():
             return jsonify({"status": 2, "message": f"Falha ao conectar ao serviço de atualização de saldo: {e}"}), 400
     else:
         return jsonify({"status": 2, "message": "Transacao nao aprovada", "selected_validators": selected_validators, "validation_results": validation_results}), 400
+
 @app.route('/seletor/delete/<int:id>', methods = ['DELETE'])
 def ApagarSeletor(id):
     if(request.method == 'DELETE'):
@@ -238,9 +252,8 @@ def select_based_on_stake(validators):
     total_stake = sum(v.stake for v in validators)
     validator_weights = []
     for validator in validators:
-        # validador = Validador.query.filter_by(id=validator).first()
         weight = validator.stake
-        if validator.total_selections>10000:
+        if validator.total_selections > 10000:
             validator.total_selections = 0
             validator.flags -= 1
         if validator.flags == 1:
@@ -248,10 +261,11 @@ def select_based_on_stake(validators):
         elif validator.flags == 2:
             weight *= 0.25
         elif validator.flags == 3:
-            weight *= 0 # stake == (stake * 2) - stake
+            weight *= 0
             validator.expulsions += 1
+            validator.in_hold = True
             db.session.commit()
-        
+
         max_weight = total_stake * 0.2
         weight = min(weight, max_weight)
         validator_weights.extend([validator.id] * int(weight))
@@ -263,6 +277,7 @@ def select_based_on_stake(validators):
             selected_validators.append(selected)
 
     return selected_validators
+
 
 if __name__ == '__main__':
     with app.app_context():

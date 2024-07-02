@@ -5,11 +5,11 @@ Seletor:
     - concenso 50% ✔
     - flags ✔
     - max 20% ✔
-    - validadores noggers expulso ❌
+    - validadores noggers expulso ✔
     - validador 5x onHold ❌
-    - retorno 2x critérios ❌
+    - retorno 2x critérios ✔
     - cadastro validador ✔
-    - distribuição de verdin ❌✔
+    - distribuição de verdin ✔
 
 Critérios Gerais:
     - web service ✔
@@ -19,15 +19,15 @@ Critérios Gerais:
     - validação pog? nog? ✔
     - sincronização de tempo ??
     - regras validação ✔
-    - identificar validador nog(votação interna) ❌
+    - identificar validador nog(votação interna) ✔
     - banco <-> seletor <-> validador ✔
     - tolerancia a falhas ??
 
 
 To-do agora:
     - concenso (atualiza os saldos) ✔
-    - expulsão ❌
+    - expulsão ✔
     - on onHold ❌
     - delete validador ✔
-    - distribuir verdin ❌✔
+    - distribuir verdin ✔
     - atualizar status no banco ❌
