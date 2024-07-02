@@ -229,15 +229,16 @@ def CriaTransacao(rem, reb, valor):
                 if response.status_code == 200:
                     selected_validators = response.json().get("selected_validators")
                     print(f"Validadores selecionados: {selected_validators}")
-
+                    print("cu: ", response.text)
+                    objeto.status = response.json().get("status")
                     return jsonify(objeto)
                     # Enviar transação para validadores (omitir esta parte ou completar conforme necessidade)
                 else:
                     print(f"Erro ao comunicar com o seletor {seletor.ip}: {response.status_code}")
             except requests.exceptions.RequestException as e:
                 print(f"Falha ao conectar ao seletor {seletor.ip}: {e}")
-
-        return jsonify(objeto)
+        print("cu: ", response)
+        return jsonify(response)
     else:
         print("Método não permitido")
         return jsonify(['Method Not Allowed'])

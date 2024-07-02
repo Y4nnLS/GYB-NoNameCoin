@@ -222,11 +222,19 @@ def select_based_on_stake(validators):
     total_stake = sum(v.stake for v in validators)
     validator_weights = []
     for validator in validators:
+        # validador = Validador.query.filter_by(id=validator).first()
         weight = validator.stake
+        if validator.total_selections>10000:
+            validator.total_selections = 0
+            validator.flags -= 1
         if validator.flags == 1:
             weight *= 0.5
         elif validator.flags == 2:
             weight *= 0.25
+        elif validator.flags == 3:
+            weight *= 0 # stake == (stake * 2) - stake
+            validator.expulsions += 1
+            db.session.commit()
         
         max_weight = total_stake * 0.2
         weight = min(weight, max_weight)
