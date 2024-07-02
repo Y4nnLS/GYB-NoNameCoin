@@ -30,3 +30,4 @@ To-do agora:
     - on onHold ❌
     - delete validador ✔
     - distribuir verdin ❌✔
+    - atualizar status no banco ❌

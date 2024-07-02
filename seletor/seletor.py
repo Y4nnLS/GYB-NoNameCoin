@@ -184,26 +184,42 @@ def select_validators():
 
     if consensus == 'Aprovada':
         # Autorizar a transação e realizar a transferência de dinheiro
-        print(data)
         sender_id = data['sender']
         receiver_id = data['receiver']
         transaction_amount = data['transaction_amount']
         fee = data['fee']
-
+        verdin = transaction_amount * fee
+        transaction_amount -= verdin
+        taxa_seletor = verdin/3
+        taxa_validadores = (verdin-taxa_seletor)/len(validadores)
+        print(1)
+        response = requests.post(f'http://localhost:5000/seletor/{data["seletor_id"]}/{data["seletor_nome"]}/{data["seletor_ip"]}/{taxa_seletor:.2f}')
+        print("buceta: ", response.text)
+        print(2)
+        for validador in selected_validators:
+            print("pinto: ", validador)
+            validador = db.session.get(Validador, validador)
+            print("karalho: ", validador)
+            validador.stake += taxa_validadores
+            db.session.commit()
+            print("porra: ", validador)
+        print(3)
         try:
             # Atualizar saldo do remetente
-            sender_response = requests.post(f'http://localhost:5000/cliente/{sender_id}', params={'amount': -(transaction_amount + fee)})
+            sender_response = requests.post(f'http://localhost:5000/cliente/{sender_id}', params={'amount': -(transaction_amount)})
+            print("fishballcat: ",sender_response.text)
             # Atualizar saldo do destinatário
             receiver_response = requests.post(f'http://localhost:5000/cliente/{receiver_id}', params={'amount': transaction_amount})
+            print("przy corno do krll filha da puta: ",sender_response.text)
 
             if sender_response.status_code == 200 and receiver_response.status_code == 200:
-                return jsonify({"status": 1, "message": "Transação aprovada e valores atualizados", "selected_validators": selected_validators, "validation_results": validation_results})
+                return jsonify({"status": 1, "message": "Transacao aprovada e valores atualizados", "selected_validators": selected_validators, "validation_results": validation_results})
             else:
                 return jsonify({"status": 2, "message": "Erro ao atualizar saldos dos usuarios"}), 400
         except requests.exceptions.RequestException as e:
             return jsonify({"status": 2, "message": f"Falha ao conectar ao serviço de atualização de saldo: {e}"}), 400
     else:
-        return jsonify({"status": 2, "message": "Transação não aprovada", "selected_validators": selected_validators, "validation_results": validation_results}), 400
+        return jsonify({"status": 2, "message": "Transacao nao aprovada", "selected_validators": selected_validators, "validation_results": validation_results}), 400
 @app.route('/seletor/delete/<int:id>', methods = ['DELETE'])
 def ApagarSeletor(id):
     if(request.method == 'DELETE'):

@@ -25,10 +25,10 @@ response = requests.post('http://localhost:5000/seletor/seletor2/122.122')
 print(response.text)
 
 # =============================== EDITAR SELETORES =============================== 
-response = requests.post('http://localhost:5000/seletor/1/seletorB/111111')
-print(response.text)
-response = requests.post('http://localhost:5000/seletor/2/seletorA/222222')
-print(response.text)
+# response = requests.post('http://localhost:5000/seletor/1/seletorB/111111')
+# print(response.text)
+# response = requests.post('http://localhost:5000/seletor/2/seletorA/222222')
+# print(response.text)
 
 # =============================== DELETAR SELETORES =============================== 
 response = requests.delete('http://localhost:5000/seletor/2')

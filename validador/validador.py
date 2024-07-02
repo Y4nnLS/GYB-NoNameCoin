@@ -54,7 +54,7 @@ def validador():
     current_time = datetime.datetime.now()
     
     # Verificar saldo suficiente
-    if sender_amount < amount + fee:
+    if sender_amount < amount:
         return jsonify({"status": 2, "message": "Saldo insuficiente"}), 400
     
     # Verificar se o horário da transação é válido
@@ -72,7 +72,7 @@ def validador():
         return jsonify({"status": 2, "message": "Limite de transacoes por minuto excedido, remetente bloqueado"}), 400
     
     # Atualizar saldo da conta e tempo da última transação
-    accounts[sender]['balance'] -= amount + fee
+    accounts[sender]['balance'] -= amount
     accounts[sender]['last_transaction_time'] = timestamp
     accounts[receiver]['balance'] += amount
     return jsonify({"validator_id":validator_id,"status": 1, "message": "Transacao validada com sucesso"}), 200
