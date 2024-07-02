@@ -8,6 +8,7 @@ import string
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -54,6 +55,37 @@ def generate_unique_key():
     unique_key = ''.join(secrets.choice(alphabet) for i in range(16))  # 16 caracteres de comprimento
     return unique_key
 
+
+def get_last_transaction_and_count(sender):
+    current_time = datetime.now()
+    one_minute_ago = current_time - timedelta(minutes=1)
+
+    last_transaction = None
+    transactions_last_minute_count = 0
+
+    try:
+        # Faz a requisição GET para o endpoint /transacoes
+        response = requests.get('http://localhost:5000/transacoes')  # Ajuste o endereço conforme necessário
+
+        if response.status_code == 200:
+            # Obtém as transações do JSON retornado pela API
+            transacoes = response.json()
+
+            # Encontra a última transação do sender
+            for transacao in transacoes:
+                if transacao.get('sender') == sender:
+                    last_transaction = transacao
+                    break
+
+            # Conta as transações do sender nos últimos minutos
+            transactions_last_minute_count = sum(1 for t in transacoes if t.get('sender') == sender and datetime.strptime(t.get('timestamp'), '%Y-%m-%d %H:%M:%S') >= one_minute_ago)
+
+    except requests.exceptions.RequestException as e:
+        print(f'Erro ao fazer requisição para /transacoes: {e}')
+
+    return last_transaction, transactions_last_minute_count
+
+
 @app.route("/")
 def index():
     return jsonify(['API sem interface do banco!'])
@@ -95,19 +127,22 @@ def register_validator(name, stake):
 @app.route('/seletor/select', methods=['POST'])
 def select_validators():
     data = request.json
-    print(data)
-    transaction_id = data['transaction_id']
+    last_transaction, transactions_last_minute_count = get_last_transaction_and_count(data['sender'])
+
     transaction_details = {
-        'id': transaction_id,
+        'id':  data['transaction_id'],
         'sender': data['sender'],
         'sender_amount': data['sender_amount'],
         'receiver': data['receiver'],
         'receiver_amount': data['receiver_amount'],
         'amount': data['transaction_amount'],
         'fee': data['fee'],
-        'timestamp': data['timestamp']
+        'timestamp': data['timestamp'],
+        'last_transaction': last_transaction,
+        'transactions_last_minute_count': transactions_last_minute_count
     }
-    
+    # last_transaction, transactions_last_minute_count = get_last_transaction_and_count(data['sender'])
+
     validadores = Validador.query.filter_by(in_hold=False).all()
 
     if len(validadores) < 3:

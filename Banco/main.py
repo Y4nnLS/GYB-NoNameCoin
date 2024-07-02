@@ -203,7 +203,7 @@ def CriaTransacao(rem, reb, valor):
         # Selecionar validadores
         seletores = Seletor.query.all()
         print(f"Seletores encontrados: {seletores}")
-        sender = requests.get(f'http://localhost:5000/cliente/{rem}')
+        sender = requests.get(f'http://localhost:5000/cliente/{rem}') # no seletor
         sender_amount = sender.json()
         sender = requests.get(f'http://localhost:5000/cliente/{reb}')
         receiver_amount = sender.json()
