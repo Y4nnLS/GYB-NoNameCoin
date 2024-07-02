@@ -78,7 +78,7 @@ def InserirCliente(nome, senha, qtdMoeda):
 @app.route('/cliente/<int:id>', methods = ['GET'])
 def UmCliente(id):
     if(request.method == 'GET'):
-        objeto = Cliente.query.get(id)
+        objeto = db.session.get(Cliente, id)
         return jsonify(objeto)
     else:
         return jsonify(['Method Not Allowed'])
@@ -103,7 +103,7 @@ def EditarCliente(id, qtdMoedas):
 @app.route('/cliente/<int:id>', methods = ['DELETE'])
 def ApagarCliente(id):
     if(request.method == 'DELETE'):
-        objeto = Cliente.query.get(id)
+        objeto = db.session.get(Cliente, id)
         db.session.delete(objeto)
         db.session.commit()
 
@@ -135,8 +135,8 @@ def InserirSeletor(nome, ip):
 @app.route('/seletor/<int:id>', methods = ['GET'])
 def UmSeletor(id):
     if(request.method == 'GET'):
-        produto = Seletor.query.get(id)
-        return jsonify(produto)
+        objeto = db.session.get(Seletor, id)
+        return jsonify(objeto)
     else:
         return jsonify(['Method Not Allowed'])
 
@@ -163,7 +163,7 @@ def EditarSeletor(id, nome, ip):
 @app.route('/seletor/<int:id>', methods = ['DELETE'])
 def ApagarSeletor(id):
     if(request.method == 'DELETE'):
-        objeto = Seletor.query.get(id)
+        objeto = db.session.get(Seletor, id)
         db.session.delete(objeto)
         db.session.commit()
 
@@ -228,6 +228,8 @@ def CriaTransacao(rem, reb, valor):
                 if response.status_code == 200:
                     selected_validators = response.json().get("selected_validators")
                     print(f"Validadores selecionados: {selected_validators}")
+
+                    return jsonify(objeto)
                     # Enviar transação para validadores (omitir esta parte ou completar conforme necessidade)
                 else:
                     print(f"Erro ao comunicar com o seletor {seletor.ip}: {response.status_code}")
@@ -243,7 +245,7 @@ def CriaTransacao(rem, reb, valor):
 @app.route('/transacoes/<int:id>', methods = ['GET'])
 def UmaTransacao(id):
     if(request.method == 'GET'):
-        objeto = Transacao.query.get(id)
+        objeto = db.session.get(Transacao, id)
         return jsonify(objeto)
     else:
         return jsonify(['Method Not Allowed'])

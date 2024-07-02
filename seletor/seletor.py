@@ -59,7 +59,6 @@ def generate_unique_key():
 def get_last_transaction_and_count(sender):
     current_time = datetime.now()
     one_minute_ago = current_time - timedelta(minutes=1)
-
     last_transaction = None
     transactions_last_minute_count = 0
 
@@ -149,10 +148,11 @@ def select_validators():
         return jsonify({"status": 2, "message": "Validadores insuficientes, transação em espera"}), 400
 
     selected_validators = select_based_on_stake(validadores)
+    validation_results = []
 
     # Enviar transação para validadores selecionados
     for validador_id in selected_validators:
-        validador = Validador.query.get(validador_id)
+        validador = db.session.get(Validador, validador_id)
         try:
             url = f'http://localhost:5002/validador'
             data = {
@@ -160,16 +160,20 @@ def select_validators():
                 'validator_id': validador_id,
                 'unique_key': validador.unique_key
             }
-            print(data)
             response = requests.post(url, json=data)
-            # print("aaaaaaaaaaaaaa: ", response.json())
 
-            if response.status_code != 200:
+            if response.status_code == 200:
+                validation_results.append(response.json())
+            else:
                 print(f"Erro ao comunicar com o validador {validador.name}: {response.status_code}")
         except requests.exceptions.RequestException as e:
             print(f"Falha ao conectar ao validador {validador.name}: {e}")
 
-    return jsonify({"status": 1, "selected_validators": selected_validators})
+
+# a gente pode fazer o processo de eleição, se der poggers a gente atualiza os saldos, se der noggers cancela tudo
+    
+    
+    return jsonify({"status": 1, "selected_validators": selected_validators, "validation_results": validation_results})
 
 
 def select_based_on_stake(validators):
