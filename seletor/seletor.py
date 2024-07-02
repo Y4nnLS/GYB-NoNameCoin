@@ -54,6 +54,24 @@ class Validador(db.Model):
     initial_stake = db.Column(db.Float, nullable=False, default=0)
     expelled_count = db.Column(db.Integer, nullable=False, default=0)
 
+def log_event(event, details):
+    log = ElectionLog(event=event, details=details)
+    db.session.add(log)
+    db.session.commit()
+
+@dataclass
+class ElectionLog(db.Model):
+    id: int
+    timestamp: datetime
+    event: str
+    details: str
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    event = db.Column(db.String(50), nullable=False)
+    details = db.Column(db.Text, nullable=False)
+
+
 def generate_unique_key():
     alphabet = string.ascii_letters + string.digits
     unique_key = ''.join(secrets.choice(alphabet) for i in range(16))  # 16 caracteres de comprimento
@@ -130,6 +148,8 @@ def register_validator(name, stake):
 @app.route('/seletor/select', methods=['POST'])
 def select_validators():
     data = request.json
+    log_event("START_ELECTION", f"Start election process for transaction {data['transaction_id']}")
+
     last_transaction, transactions_last_minute_count = get_last_transaction_and_count(data['sender'])
 
     transaction_details = {
@@ -149,13 +169,15 @@ def select_validators():
     validadores = Validador.query.filter_by(in_hold=False).all()
 
     if len(validadores) < 3:
+        log_event("ELECTION_ERROR", "Validadores insuficientes, transação em espera")
         return jsonify({"status": 2, "message": "Validadores insuficientes, transação em espera"}), 400
 
     selected_validators = select_based_on_stake(validadores)
     validation_results = []
+    log_event("VALIDATORS_SELECTED", f"Selected validators: {selected_validators}")
 
     
-
+    server_time = get_server_time()
     # Enviar transação para validadores selecionados
     for validador_id in selected_validators:
         validador = db.session.get(Validador, validador_id)
@@ -164,15 +186,18 @@ def select_validators():
             data_transaction = {
                 'transaction': transaction_details,
                 'validator_id': validador_id,
-                'unique_key': validador.unique_key
+                'unique_key': validador.unique_key,
+                'server_time': server_time
             }
             response = requests.post(url, json=data_transaction)
 
             if response.status_code == 200:
                 validation_results.append(response.json())
             else:
+                log_event("VALIDATOR_COMMUNICATION_ERROR", f"Erro ao comunicar com o validador {validador.name}: {response.status_code}")
                 print(f"Erro ao comunicar com o validador {validador.name}: {response.status_code}")
         except requests.exceptions.RequestException as e:
+            log_event("VALIDATOR_CONNECTION_ERROR", f"Falha ao conectar ao validador {validador.name}: {e}")
             print(f"Falha ao conectar ao validador {validador.name}: {e}")
 
 # a gente pode fazer o processo de eleição, se der poggers a gente atualiza os saldos, se der noggers cancela tudo
@@ -183,6 +208,7 @@ def select_validators():
 
     # Verificando se há consenso
     consensus = 'Aprovada' if approved_count > len(validation_results) / 2 else 'Nao Aprovada' if rejected_count > len(validation_results) / 2 else 'Sem consenso'
+    log_event("CONSENSUS_RESULT", f"Consensus: {consensus}")
 
     for result in validation_results:
         validador_id = result['validator_id']
@@ -194,14 +220,16 @@ def select_validators():
                 validador.stake = 0
                 validador.in_hold = True
                 validador.expelled_count += 1
+                log_event("VALIDATOR_EXPULSION", f"Validador {validador.name} expelled from the network.")
             db.session.commit()
         else:
             validador.coherent_transactions += 1
+            validador.total_selections += 1
             if validador.coherent_transactions >= 10000:
                 validador.flags = max(0, validador.flags - 1)
                 validador.coherent_transactions = 0
             db.session.commit()
-
+    log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
     print(f"Consenso: {consensus}")
 
     if consensus == 'Aprovada':
@@ -226,12 +254,16 @@ def select_validators():
             receiver_response = requests.post(f'http://localhost:5000/cliente/{receiver_id}', params={'amount': transaction_amount})
 
             if sender_response.status_code == 200 and receiver_response.status_code == 200:
+                log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
                 return jsonify({"status": 1, "message": "Transacao aprovada e valores atualizados", "selected_validators": selected_validators, "validation_results": validation_results})
             else:
+                log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
                 return jsonify({"status": 2, "message": "Erro ao atualizar saldos dos usuarios"}), 400
         except requests.exceptions.RequestException as e:
+            log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
             return jsonify({"status": 2, "message": f"Falha ao conectar ao serviço de atualização de saldo: {e}"}), 400
     else:
+        log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
         return jsonify({"status": 2, "message": "Transacao nao aprovada", "selected_validators": selected_validators, "validation_results": validation_results}), 400
 
 @app.route('/seletor/delete/<int:id>', methods = ['DELETE'])
@@ -278,6 +310,21 @@ def select_based_on_stake(validators):
 
     return selected_validators
 
+@app.route('/seletor/election_logs', methods=['GET'])
+def get_election_logs():
+    logs = ElectionLog.query.all()
+    return jsonify([log.to_dict() for log in logs])
+
+def get_server_time():
+    try:
+        response = requests.get('http://localhost:5000/hora')
+        if response.status_code == 200:
+            return datetime.fromisoformat(response.json()['server_time'])
+        else:
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao obter tempo do servidor: {e}")
+        return None
 
 if __name__ == '__main__':
     with app.app_context():

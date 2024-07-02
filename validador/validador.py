@@ -28,6 +28,7 @@ def initialize_account(account_id):
 
 @app.route('/validador', methods=['POST'])
 def validador():
+    
 
     data = request.json
     transaction_id = data['transaction']['id']
@@ -42,6 +43,10 @@ def validador():
     timestamp = datetime.datetime.fromisoformat(data['transaction']['timestamp'])
     last_transaction_time = datetime.datetime.fromisoformat(data['transaction']['last_transaction']['timestamp']) if data['transaction']['last_transaction'] else None
     transactions_last_minute_count = data['transaction']['transactions_last_minute_count']
+
+    server_time = data['server_time']
+    if not server_time:
+        return jsonify({"status": 2, "message": "Falha ao obter tempo do servidor"}), 400
 
     # Inicializar contas de remetente e destinatário se não existirem
     initialize_account(sender)
@@ -58,7 +63,7 @@ def validador():
         return jsonify({"status": 2, "message": "Saldo insuficiente"}), 400
     
     # Verificar se o horário da transação é válido
-    if timestamp > current_time or (last_transaction_time and timestamp <= last_transaction_time):
+    if timestamp > server_time or (last_transaction_time and timestamp <= last_transaction_time):
         return jsonify({"status": 2, "message": "Horario da transacao invalido"}), 400
     
     # Verificar o limite de transações por minuto e estado de bloqueio
