@@ -75,7 +75,7 @@ def validador():
     accounts[sender]['balance'] -= amount + fee
     accounts[sender]['last_transaction_time'] = timestamp
     accounts[receiver]['balance'] += amount
-    return jsonify({"status": 1, "message": "Transacao validada com sucesso"}), 200
+    return jsonify({"validator_id":validator_id,"status": 1, "message": "Transacao validada com sucesso"}), 200
 
 @app.route('/validador/register_key', methods=['POST'])
 def register_key():

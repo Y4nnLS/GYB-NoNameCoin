@@ -83,12 +83,13 @@ def UmCliente(id):
     else:
         return jsonify(['Method Not Allowed'])
 
-@app.route('/cliente/<int:id>/<int:qtdMoedas>', methods=["POST"])
-def EditarCliente(id, qtdMoedas):
+@app.route('/cliente/<int:id>', methods=["POST"]) # alteramos a função pois por padrão, o Flask não permite que valores negativos sejam passados diretamente como parte da URL devido à maneira como os URLs são interpretados.
+def EditarCliente(id):
     if request.method=='POST':
         try:
+            amount = request.args.get('amount', type=int)
             cliente = Cliente.query.filter_by(id=id).first()
-            cliente.qtdMoedas = qtdMoedas
+            cliente.qtdMoeda += amount
             db.session.commit()
             return jsonify(['Alteração feita com sucesso'])
         except Exception as e:

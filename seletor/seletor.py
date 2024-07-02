@@ -150,17 +150,19 @@ def select_validators():
     selected_validators = select_based_on_stake(validadores)
     validation_results = []
 
+    
+
     # Enviar transação para validadores selecionados
     for validador_id in selected_validators:
         validador = db.session.get(Validador, validador_id)
         try:
             url = f'http://localhost:5002/validador'
-            data = {
+            data_transaction = {
                 'transaction': transaction_details,
                 'validator_id': validador_id,
                 'unique_key': validador.unique_key
             }
-            response = requests.post(url, json=data)
+            response = requests.post(url, json=data_transaction)
 
             if response.status_code == 200:
                 validation_results.append(response.json())
@@ -169,12 +171,39 @@ def select_validators():
         except requests.exceptions.RequestException as e:
             print(f"Falha ao conectar ao validador {validador.name}: {e}")
 
-
 # a gente pode fazer o processo de eleição, se der poggers a gente atualiza os saldos, se der noggers cancela tudo
-    
-    
-    return jsonify({"status": 1, "selected_validators": selected_validators, "validation_results": validation_results})
+    print("MERDAAAA: ", validation_results)
+    # Contadores para aprovações e reprovações
+    approved_count = sum(1 for result in validation_results if result['status'] == 1)
+    rejected_count = sum(1 for result in validation_results if result['status'] == 2)
 
+    # Verificando se há consenso
+    consensus = 'Aprovada' if approved_count > len(validation_results) / 2 else 'Nao Aprovada' if rejected_count > len(validation_results) / 2 else 'Sem consenso'
+
+    print(f"Consenso: {consensus}")
+
+    if consensus == 'Aprovada':
+        # Autorizar a transação e realizar a transferência de dinheiro
+        print(data)
+        sender_id = data['sender']
+        receiver_id = data['receiver']
+        transaction_amount = data['transaction_amount']
+        fee = data['fee']
+
+        try:
+            # Atualizar saldo do remetente
+            sender_response = requests.post(f'http://localhost:5000/cliente/{sender_id}', params={'amount': -(transaction_amount + fee)})
+            # Atualizar saldo do destinatário
+            receiver_response = requests.post(f'http://localhost:5000/cliente/{receiver_id}', params={'amount': transaction_amount})
+
+            if sender_response.status_code == 200 and receiver_response.status_code == 200:
+                return jsonify({"status": 1, "message": "Transação aprovada e valores atualizados", "selected_validators": selected_validators, "validation_results": validation_results})
+            else:
+                return jsonify({"status": 2, "message": "Erro ao atualizar saldos dos usuarios"}), 400
+        except requests.exceptions.RequestException as e:
+            return jsonify({"status": 2, "message": f"Falha ao conectar ao serviço de atualização de saldo: {e}"}), 400
+    else:
+        return jsonify({"status": 2, "message": "Transação não aprovada", "selected_validators": selected_validators, "validation_results": validation_results}), 400
 @app.route('/seletor/delete/<int:id>', methods = ['DELETE'])
 def ApagarSeletor(id):
     if(request.method == 'DELETE'):
