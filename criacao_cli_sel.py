@@ -9,10 +9,10 @@ response = requests.post('http://localhost:5000/cliente/fds/1234/500')
 print(response.text)
 
 # =============================== EDITAR CLIIENTES =============================== 
-response = requests.post('http://localhost:5000/cliente/1/250')
-print(response.text)
-response = requests.post('http://localhost:5000/cliente/2/300')
-print(response.text)
+# response = requests.post('http://localhost:5000/cliente/1/250')
+# print(response.text)
+# response = requests.post('http://localhost:5000/cliente/2/300')
+# print(response.text)
 
 # =============================== DELETAR CLIENTES =============================== 
 response = requests.delete('http://localhost:5000/cliente/3')

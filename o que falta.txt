@@ -2,21 +2,21 @@ Validador: ✔
 
 Seletor: 
     - Escolher 3 ✔
-    - concenso 50% ❌
+    - concenso 50% ✔
     - flags ✔
     - max 20% ✔
     - validadores noggers expulso ❌
     - validador 5x onHold ❌
     - retorno 2x critérios ❌
     - cadastro validador ✔
-    - distribuição de verdin ❌
+    - distribuição de verdin ❌✔
 
 Critérios Gerais:
     - web service ✔
     - eleição dos validadores ✔
-    - insert/delete validador ✔❌
+    - insert/delete validador ✔
     - passo a passo ❌
-    - validação pog? nog? ❌
+    - validação pog? nog? ✔
     - sincronização de tempo ??
     - regras validação ✔
     - identificar validador nog(votação interna) ❌
@@ -25,8 +25,8 @@ Critérios Gerais:
 
 
 To-do agora:
-    - concenso (atualiza os saldos)
-    - expulsão
-    - on onHold
-    - delete validador
-    - distribuir verdin
+    - concenso (atualiza os saldos) ✔
+    - expulsão ❌
+    - on onHold ❌
+    - delete validador ✔
+    - distribuir verdin ❌✔
