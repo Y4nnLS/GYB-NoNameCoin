@@ -180,11 +180,13 @@ def ApagarSeletor(id):
         return jsonify(['Method Not Allowed'])
 
 # hora
-@app.route('/hora', methods = ['GET'])
+@app.route('/hora', methods=['GET'])
 def horario():
-    if(request.method == 'GET'):
-        objeto = datetime.now()
-        return jsonify(objeto)
+    if request.method == 'GET':
+        objeto = datetime.utcnow()
+        return jsonify({'datetime': objeto.isoformat() + 'Z'})
+    
+
 
 # transações		
 @app.route('/transacoes', methods = ['GET'])
@@ -229,13 +231,15 @@ def CriaTransacao(rem, reb, valor):
                 }
                 print(f"Enviando requisição para o seletor: {url} com dados: {data}")
                 response = requests.post(url, json=data)
+                objeto.status = response.json().get("status")
+                db.session.commit()
                 
                 print(f"Resposta do seletor: {response.status_code}, {response.text}")
                 
                 if response.status_code == 200:
                     selected_validators = response.json().get("selected_validators")
                     print(f"Validadores selecionados: {selected_validators}")
-                    objeto.status = response.json().get("status")
+                    
                     return jsonify(objeto)
                     # Enviar transação para validadores (omitir esta parte ou completar conforme necessidade)
                 else:

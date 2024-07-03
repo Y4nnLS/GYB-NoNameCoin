@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
-import datetime
+from datetime import datetime
+# import datetime
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -28,9 +29,14 @@ def initialize_account(account_id):
 
 @app.route('/validador', methods=['POST'])
 def validador():
-    
-
     data = request.json
+    server_time_str = data['server_time']
+    # Remover o 'Z' do formato esperado, se necessário
+    if server_time_str.endswith('Z'):
+        server_time_str = server_time_str[:-1]
+    server_time = datetime.fromisoformat(server_time_str)
+
+    # server_time = datetime.strptime(server_time_str, '%Y-%m-%dT%H:%M:%S.%fZ')
     transaction_id = data['transaction']['id']
     validator_id = data['validator_id']
     unique_key = data['unique_key']
@@ -40,11 +46,10 @@ def validador():
     sender_amount = data['transaction']['receiver_amount']
     amount = data['transaction']['amount']
     fee = data['transaction']['fee']
-    timestamp = datetime.datetime.fromisoformat(data['transaction']['timestamp'])
-    last_transaction_time = datetime.datetime.fromisoformat(data['transaction']['last_transaction']['timestamp']) if data['transaction']['last_transaction'] else None
+    timestamp = datetime.fromisoformat(data['transaction']['timestamp'])
+    last_transaction_time = datetime.fromisoformat(data['transaction']['last_transaction']['timestamp']) if data['transaction']['last_transaction'] else None
     transactions_last_minute_count = data['transaction']['transactions_last_minute_count']
 
-    server_time = data['server_time']
     if not server_time:
         return jsonify({"status": 2, "message": "Falha ao obter tempo do servidor"}), 400
 
@@ -56,7 +61,7 @@ def validador():
     if unique_key != unique_keys.get(validator_id):
         return jsonify({"status": 2, "message": "Chave unica invalida"}), 400
     
-    current_time = datetime.datetime.now()
+    current_time = datetime.now()
     
     # Verificar saldo suficiente
     if sender_amount < amount:

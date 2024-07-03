@@ -148,7 +148,7 @@ def register_validator(name, stake):
 @app.route('/seletor/select', methods=['POST'])
 def select_validators():
     data = request.json
-    log_event("START_ELECTION", f"Start election process for transaction {data['transaction_id']}")
+    log_event("START_ELECTION", f"Iniciar processo de eleição para transação {data['transaction_id']}")
 
     last_transaction, transactions_last_minute_count = get_last_transaction_and_count(data['sender'])
 
@@ -174,10 +174,13 @@ def select_validators():
 
     selected_validators = select_based_on_stake(validadores)
     validation_results = []
-    log_event("VALIDATORS_SELECTED", f"Selected validators: {selected_validators}")
+    log_event("VALIDATORS_SELECTED", f"Validadores selecionados: {selected_validators}")
 
     
     server_time = get_server_time()
+    if server_time is None:
+        return jsonify({"status": 2, "message": "Erro ao obter o horário do servidor"}), 500
+    
     # Enviar transação para validadores selecionados
     for validador_id in selected_validators:
         validador = db.session.get(Validador, validador_id)
@@ -187,7 +190,7 @@ def select_validators():
                 'transaction': transaction_details,
                 'validator_id': validador_id,
                 'unique_key': validador.unique_key,
-                'server_time': server_time
+                'server_time': server_time.isoformat()
             }
             response = requests.post(url, json=data_transaction)
 
@@ -201,14 +204,13 @@ def select_validators():
             print(f"Falha ao conectar ao validador {validador.name}: {e}")
 
 # a gente pode fazer o processo de eleição, se der poggers a gente atualiza os saldos, se der noggers cancela tudo
-    print("MERDAAAA: ", validation_results)
     # Contadores para aprovações e reprovações
     approved_count = sum(1 for result in validation_results if result['status'] == 1)
     rejected_count = sum(1 for result in validation_results if result['status'] == 2)
 
     # Verificando se há consenso
     consensus = 'Aprovada' if approved_count > len(validation_results) / 2 else 'Nao Aprovada' if rejected_count > len(validation_results) / 2 else 'Sem consenso'
-    log_event("CONSENSUS_RESULT", f"Consensus: {consensus}")
+    log_event("CONSENSUS_RESULT", f"Consenso: {consensus}")
 
     for result in validation_results:
         validador_id = result['validator_id']
@@ -220,7 +222,7 @@ def select_validators():
                 validador.stake = 0
                 validador.in_hold = True
                 validador.expelled_count += 1
-                log_event("VALIDATOR_EXPULSION", f"Validador {validador.name} expelled from the network.")
+                log_event("VALIDATOR_EXPULSION", f"Validador {validador.name} expulso da rede.")
             db.session.commit()
         else:
             validador.coherent_transactions += 1
@@ -229,7 +231,6 @@ def select_validators():
                 validador.flags = max(0, validador.flags - 1)
                 validador.coherent_transactions = 0
             db.session.commit()
-    log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
     print(f"Consenso: {consensus}")
 
     if consensus == 'Aprovada':
@@ -254,16 +255,13 @@ def select_validators():
             receiver_response = requests.post(f'http://localhost:5000/cliente/{receiver_id}', params={'amount': transaction_amount})
 
             if sender_response.status_code == 200 and receiver_response.status_code == 200:
-                log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
+                log_event("END_ELECTION", f"Fim do processo de eleição para a transação {data['transaction_id']}")
                 return jsonify({"status": 1, "message": "Transacao aprovada e valores atualizados", "selected_validators": selected_validators, "validation_results": validation_results})
             else:
-                log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
                 return jsonify({"status": 2, "message": "Erro ao atualizar saldos dos usuarios"}), 400
         except requests.exceptions.RequestException as e:
-            log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
             return jsonify({"status": 2, "message": f"Falha ao conectar ao serviço de atualização de saldo: {e}"}), 400
     else:
-        log_event("END_ELECTION", f"End election process for transaction {data['transaction_id']}")
         return jsonify({"status": 2, "message": "Transacao nao aprovada", "selected_validators": selected_validators, "validation_results": validation_results}), 400
 
 @app.route('/seletor/delete/<int:id>', methods = ['DELETE'])
@@ -317,14 +315,21 @@ def get_election_logs():
 
 def get_server_time():
     try:
-        response = requests.get('http://localhost:5000/hora')
+        response = requests.get('http://localhost:5000/hora')  # Ajuste o endereço conforme necessário
         if response.status_code == 200:
-            return datetime.fromisoformat(response.json()['server_time'])
-        else:
-            return None
+            data = response.json()
+            # O campo do JSON retornado contém a data em formato string
+            server_time_str = data.get('datetime')
+            # Converte a string de data para um objeto datetime
+            if server_time_str.endswith('Z'):
+                server_time_str = server_time_str[:-1]
+            current_time = datetime.fromisoformat(server_time_str)
+            return current_time
     except requests.exceptions.RequestException as e:
-        print(f"Erro ao obter tempo do servidor: {e}")
-        return None
+        print(f'Erro ao obter o horário do servidor: {e}')
+    except ValueError as e:
+        print(f'Erro ao converter o horário do servidor: {e}')
+    return None
 
 if __name__ == '__main__':
     with app.app_context():

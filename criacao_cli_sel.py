@@ -1,11 +1,11 @@
 import requests
 
 # =============================== REGISTRAR CLIENTES =============================== 
-response = requests.post('http://localhost:5000/cliente/pinto/1234/500')
+response = requests.post('http://localhost:5000/cliente/yann/1234/500')
 print(response.text)
-response = requests.post('http://localhost:5000/cliente/cu/1234/500')
+response = requests.post('http://localhost:5000/cliente/bipe/1234/500')
 print(response.text)
-response = requests.post('http://localhost:5000/cliente/fds/1234/500')
+response = requests.post('http://localhost:5000/cliente/consulo/1234/500')
 print(response.text)
 
 # =============================== EDITAR CLIIENTES =============================== 
